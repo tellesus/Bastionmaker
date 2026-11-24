@@ -1,5 +1,7 @@
-// Bastionmaker API. Static files in ./public are served by the assets binding;
-// this Worker only handles /api/*. Storage is D1: one row per campaign, one per bastion.
+// Bastionmaker API. Storage is D1: one row per campaign, one per bastion.
+// Static files in ./public are served by the assets binding when the Worker is deployed with
+// wrangler. Without that binding, they are fetched from ASSETS_ORIGIN (the public/ folder of the
+// GitHub repository) and cached at the edge, so a push to the repository updates the site.
 
 const MAX_BODY = 400_000;
 const ID_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
@@ -109,10 +111,28 @@ async function api(request, env, url) {
   throw new HttpError(405, 'Method not allowed');
 }
 
+const TYPES = { html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', json: 'application/json', svg: 'image/svg+xml', png: 'image/png', ico: 'image/x-icon' };
+
+async function fromOrigin(request, env, ctx, url) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', { status: 405 });
+  if (!env.ASSETS_ORIGIN) return new Response('No static assets configured', { status: 500 });
+  const path = url.pathname === '/' ? '/index.html' : url.pathname;
+  const ext = path.split('.').pop();
+  if (!/^[\w\-./]+$/.test(path) || path.includes('..') || !TYPES[ext]) return new Response('Not found', { status: 404 });
+  const cacheKey = new Request(url.origin + path);
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return cached;
+  const upstream = await fetch(env.ASSETS_ORIGIN + path, { cf: { cacheTtl: 120 } });
+  if (!upstream.ok) return new Response('Not found', { status: upstream.status === 404 ? 404 : 502 });
+  const res = new Response(upstream.body, { headers: { 'content-type': TYPES[ext], 'cache-control': 'public, max-age=120', 'x-content-type-options': 'nosniff' } });
+  ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
+  return res;
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : fromOrigin(request, env, ctx, url);
     try {
       return await api(request, env, url);
     } catch (e) {
