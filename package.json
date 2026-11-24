@@ -1,0 +1,15 @@
+{
+  "name": "bastionmaker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bastion builder and turn tracker for D&D 2024 groups",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}
