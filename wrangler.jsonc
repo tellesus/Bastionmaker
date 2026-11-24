@@ -12,8 +12,9 @@
     {
       "binding": "DB",
       "database_name": "bastionmaker",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "174f8218-a975-4d7d-a567-9222439b4ecc"
     }
   ],
+  "routes": [{ "pattern": "bastions.nextfic.com", "custom_domain": true }],
   "observability": { "enabled": true }
 }

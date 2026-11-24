@@ -44,9 +44,16 @@ npm test
 
 ## Deploy
 
+Live at https://bastions.nextfic.com (Worker `bastionmaker`, D1 database `bastionmaker`).
+
+The live Worker was uploaded through the Cloudflare API without an assets bundle, so it serves
+the files in `public/` from this repository's `ccr-56610837-l4upwy` branch on GitHub (the
+`ASSETS_ORIGIN` variable), cached for two minutes. Pushing to that branch updates the site; changes
+to `src/worker.js` need a redeploy. Keep the repository public and the branch in place, or switch
+to a self-contained deploy:
+
 ```sh
-npx wrangler d1 create bastionmaker   # once; put the database_id in wrangler.jsonc
-npm run deploy
+npm run deploy    # wrangler bundles public/ into the Worker; ASSETS_ORIGIN is no longer used
 ```
 
 The tables are created automatically on first request.
